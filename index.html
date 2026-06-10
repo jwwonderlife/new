@@ -100,7 +100,6 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(-
 .fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--indigo);background:#fff;box-shadow:0 0 0 3px rgba(67,56,202,0.1);}
 .fg textarea{resize:vertical;min-height:80px;line-height:1.6;}
 .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.fg-row-3{display:grid;grid-template-columns:1fr 1fr 90px;gap:10px;}
 .tag-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
 .tag-pill{font-size:12px;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text2);font-family:'Sarabun',sans-serif;font-weight:500;transition:all 0.15s;}
 .tag-pill:hover{border-color:var(--indigo);color:var(--indigo);}
@@ -205,13 +204,10 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(-
 
 /* ── RESPONSIVE ── */
 @media(min-width:700px){
-  .topnav-logo span.logo-txt{display:inline;}
   .sidebar{display:block;}
   .bottomnav{display:none !important;}
-  #screenApp .main-content{display:block !important;}
   .mobile-fab{display:none !important;}
   #pageStats,#pageSettings{display:none;}
-  .sheet-overlay{display:none !important;}
   .desktop-only{display:block !important;}
   .mobile-only{display:none !important;}
 }
@@ -239,7 +235,7 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(-
     <div class="login-logo">
       <div class="icon-wrap"><i class="ti ti-notebook"></i></div>
       <h1>Work Diary</h1>
-      <p>บันทึกงานประจำวัน ทุกอุปกรณ์</p>
+      <p>บันทึกงานประจำวัน</p>
     </div>
     <div class="login-tabs">
       <button class="login-tab active" id="tabLogin" onclick="switchTab('login')">เข้าสู่ระบบ</button>
@@ -259,7 +255,7 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(-
       <input type="password" id="inPinConfirm" placeholder="••••" inputmode="numeric" maxlength="8">
     </div>
     <button class="btn-login" id="btnLoginAction" onclick="doLogin()">เข้าสู่ระบบ</button>
-    <div class="login-hint" id="loginHint">ข้อมูลเก็บบน cloud — ใช้ได้ทุกอุปกรณ์</div>
+    <div class="login-hint" id="loginHint">ข้อมูลถูกเก็บในเบราว์เซอร์ — ใช้ได้ทุกอุปกรณ์เครื่องนี้</div>
   </div>
 </div>
 
@@ -310,7 +306,7 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(-
     <!-- Main content -->
     <div class="main-content" id="mainContent">
 
-      <!-- Add form (desktop always visible / mobile inside sheet) -->
+      <!-- Add form -->
       <div class="form-card" id="formCard">
         <div class="form-card-header">
           <i class="ti ti-plus-circle"></i>
@@ -382,7 +378,7 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(-
         </div>
         <div class="setting-row">
           <i class="ti ti-cloud"></i>
-          <div class="setting-info"><div class="si-title">Cloud Sync</div><div class="si-sub" id="settingSync">—</div></div>
+          <div class="setting-info"><div class="si-title">Local Storage</div><div class="si-sub" id="settingSync">พร้อมใช้งาน</div></div>
           <button class="btn-setting" onclick="syncNow()">Sync ตอนนี้</button>
         </div>
       </div>
@@ -410,7 +406,7 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(-
       </div>
     </div>
 
-  </div><!-- end app-layout -->
+  </div>
 
   <!-- Bottom nav (mobile) -->
   <div class="bottomnav">
@@ -432,7 +428,7 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(-
     <i class="ti ti-plus"></i>
   </button>
 
-</div><!-- end screenApp -->
+</div>
 
 <!-- ══ MOBILE SHEET ══ -->
 <div class="sheet-overlay" id="sheetOverlay" onclick="closeSheetIfOutside(event)">
@@ -442,12 +438,452 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(-
       <h2 id="sheetTitle">เพิ่มรายการงาน</h2>
       <button class="sheet-close" onclick="closeSheet()"><i class="ti ti-x"></i></button>
     </div>
-    <div class="sheet-body" id="sheetBody"><!-- filled by JS --></div>
+    <div class="sheet-body" id="sheetBody"></div>
   </div>
 </div>
 
 <div id="toast"></div>
 
-<script src="app.js"></script>
+<script>
+/* ═══════════════════════════════════════
+   CONSTANTS & STATE
+═══════════════════════════════════════ */
+const TAGS = ['✅ เสร็จแล้ว','🔄 กำลังทำ','⏸ รอดำเนินการ','🐛 แก้บั๊ก','🚀 ส่งมอบ','📝 Draft'];
+let entries = [];
+let selectedTags = [];
+let editId = null;
+let currentView = 'all';
+let currentUser = null;
+let isMobile = () => window.innerWidth < 700;
+
+/* ═══════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════ */
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2500); }
+function fmtDate(d){
+  if(!d) return '';
+  const [y,m,day]=d.split('-');
+  const M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const W=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+  const dt=new Date(d+'T00:00:00');
+  return `${W[dt.getDay()]} ${parseInt(day)} ${M[parseInt(m)-1]} ${parseInt(y)+543}`;
+}
+function storageKey(user){ return 'wd_' + user.toLowerCase().trim(); }
+
+/* ═══════════════════════════════════════
+   LOCAL STORAGE ONLY (แก้ไขจาก Cloud)
+═══════════════════════════════════════ */
+function setSyncStatus(state, txt){
+  const btn = document.getElementById('syncBtn');
+  btn.className = 'topnav-sync ' + state;
+  document.getElementById('syncTxt').textContent = txt;
+  const sub = document.getElementById('settingSync');
+  if(sub) sub.textContent = txt;
+}
+
+async function cloudGet(){ return null; }
+async function cloudSave(){ 
+  setSyncStatus('ok','✓ บันทึกแล้ว');
+  setTimeout(()=>setSyncStatus('idle','Sync'), 1500);
+}
+
+function saveLocal(){
+  if(currentUser) localStorage.setItem(storageKey(currentUser.name), JSON.stringify(entries));
+}
+function loadLocal(){
+  if(!currentUser) return [];
+  try {
+    const raw = localStorage.getItem(storageKey(currentUser.name));
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+async function syncNow(){
+  if(!currentUser) return;
+  saveLocal();
+  await cloudSave();
+}
+
+/* ═══════════════════════════════════════
+   AUTH
+═══════════════════════════════════════ */
+let isRegMode = false;
+function switchTab(mode){
+  isRegMode = mode === 'reg';
+  document.getElementById('tabLogin').classList.toggle('active', !isRegMode);
+  document.getElementById('tabReg').classList.toggle('active', isRegMode);
+  document.getElementById('fieldConfirm').style.display = isRegMode ? 'block' : 'none';
+  document.getElementById('btnLoginAction').textContent = isRegMode ? 'สร้างบัญชี' : 'เข้าสู่ระบบ';
+  document.getElementById('loginHint').textContent = isRegMode 
+    ? 'ข้อมูลจะถูกเก็บในเบราว์เซอร์เครื่องนี้'
+    : 'ข้อมูลถูกเก็บในเบราว์เซอร์ — ใช้ได้ทุกอุปกรณ์เครื่องนี้';
+  document.getElementById('loginErr').style.display='none';
+}
+
+function hashPin(pin){ 
+  let h=5381;
+  for(let i=0;i<pin.length;i++) h=((h<<5)+h)+pin.charCodeAt(i);
+  return String(h>>>0);
+}
+
+async function doLogin(){
+  const user = document.getElementById('inUser').value.trim();
+  const pin = document.getElementById('inPin').value.trim();
+  const err = document.getElementById('loginErr');
+  if(!user || !pin){ showErr('กรุณากรอกข้อมูลให้ครบ'); return; }
+  if(pin.length < 4){ showErr('PIN ต้องมีอย่างน้อย 4 หลัก'); return; }
+  if(isRegMode){
+    const confirm = document.getElementById('inPinConfirm').value.trim();
+    if(pin !== confirm){ showErr('PIN ไม่ตรงกัน'); return; }
+  }
+  const btn = document.getElementById('btnLoginAction');
+  btn.textContent = 'กำลังเข้าสู่ระบบ...';
+  btn.disabled = true;
+
+  const pinHash = hashPin(pin);
+  sessionStorage.setItem('wd_pin', pinHash);
+  sessionStorage.setItem('wd_user', user);
+  currentUser = { name: user };
+
+  entries = loadLocal();
+  showApp();
+
+  btn.textContent = isRegMode ? 'สร้างบัญชี' : 'เข้าสู่ระบบ';
+  btn.disabled = false;
+
+  setSyncStatus('ok','พร้อมใช้งาน');
+}
+
+function showErr(msg){
+  const el = document.getElementById('loginErr');
+  el.textContent = msg;
+  el.style.display='block';
+}
+
+function showApp(){
+  document.getElementById('screenLogin').classList.remove('active');
+  document.getElementById('screenApp').classList.add('active');
+  document.getElementById('avatarTxt').textContent = currentUser.name.slice(0,2).toUpperCase();
+  document.getElementById('userNameTxt').textContent = currentUser.name;
+  document.getElementById('settingUser').textContent = currentUser.name;
+  document.getElementById('inDate').value = todayStr();
+  initTagWrap('tagWrap');
+  renderList();
+  updateStats();
+}
+
+function doLogout(){
+  if(!confirm('ต้องการออกจากระบบ?')) return;
+  syncNow().then(()=>{
+    sessionStorage.clear();
+    currentUser=null; entries=[];
+    document.getElementById('screenApp').classList.remove('active');
+    document.getElementById('screenLogin').classList.add('active');
+    document.getElementById('inUser').value='';
+    document.getElementById('inPin').value='';
+    document.getElementById('loginErr').style.display='none';
+  });
+}
+
+/* ═══════════════════════════════════════
+   TAGS & MOBILE FUNCTIONS (เหมือนเดิม)
+═══════════════════════════════════════ */
+function initTagWrap(containerId){
+  const wrap = document.getElementById(containerId);
+  if(!wrap) return;
+  wrap.innerHTML='';
+  TAGS.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='tag-pill'+(selectedTags.includes(t)?' on':'');
+    b.textContent=t; b.type='button';
+    b.onclick=()=>{ 
+      if(selectedTags.includes(t)) selectedTags=selectedTags.filter(x=>x!==t);
+      else selectedTags.push(t);
+      b.classList.toggle('on');
+      if(document.getElementById('sheetOverlay').classList.contains('open')) syncSheetTags(t);
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function syncSheetTags(toggledTag){
+  const sheetWrap = document.getElementById('sheetTagWrap');
+  if(!sheetWrap) return;
+  sheetWrap.querySelectorAll('.tag-pill').forEach(b=>{
+    if(b.textContent===toggledTag) b.classList.toggle('on', selectedTags.includes(toggledTag));
+  });
+}
+
+function mobileNav(tab){
+  ['home','stats','settings'].forEach(t=>{
+    document.getElementById('bn-'+t).classList.toggle('active', t===tab);
+  });
+  const mc = document.getElementById('mainContent');
+  const ps = document.getElementById('pageStats');
+  const pg = document.getElementById('pageSettings');
+  mc.classList.toggle('hidden', tab!=='home');
+  mc.style.display = tab==='home'?'block':'none';
+  ps.style.display = tab==='stats'?'block':'none';
+  pg.style.display = tab==='settings'?'block':'none';
+  if(tab==='stats') renderStats();
+}
+
+function openSheet(id){
+  const overlay = document.getElementById('sheetOverlay');
+  document.getElementById('sheetTitle').textContent = id ? 'แก้ไขรายการ' : 'เพิ่มรายการงาน';
+  let e = id ? entries.find(x=>x.id===id) : null;
+  if(id){ editId=id; if(e){ selectedTags=[...(e.tags||[])]; } }
+  else { editId=null; selectedTags=[]; }
+
+  document.getElementById('sheetBody').innerHTML = `
+    <div class="fg-row">
+      <div class="fg"><label>วันที่</label><input type="date" id="shInDate" value="${e?e.date:todayStr()}"></div>
+      <div class="fg"><label>หมวดหมู่</label>
+        <select id="shInCat">
+          <option value="">— เลือก —</option>
+          ${['พัฒนา / โค้ด','ประชุม','วางแผน','ออกแบบ','ทดสอบ','เอกสาร','ติดต่อประสาน','อื่นๆ'].map(c=>`<option${e&&e.cat===c?' selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>ชื่องาน / หัวข้อ *</label><input type="text" id="shInTitle" placeholder="เช่น แก้ bug..." value="${e?escHtml(e.title):''}"></div>
+    <div class="fg-row">
+      <div class="fg"><label>โปรเจกต์</label><input type="text" id="shInProject" placeholder="ชื่อโปรเจกต์" value="${e&&e.project?escHtml(e.project):''}"></div>
+      <div class="fg"><label>ชั่วโมง</label><input type="number" id="shInHours" placeholder="1.5" min="0.5" max="24" step="0.5" value="${e&&e.hours?e.hours:''}"></div>
+    </div>
+    <div class="fg"><label>รายละเอียด</label><textarea id="shInNote" placeholder="สิ่งที่ทำ...">${e&&e.note?escHtml(e.note):''}</textarea></div>
+    <div class="fg"><label>สถานะ</label>
+      <div class="tag-wrap" id="sheetTagWrap">
+        ${TAGS.map(t=>`<button class="tag-pill${selectedTags.includes(t)?' on':''}" type="button" onclick="sheetToggleTag('${t}',this)">${t}</button>`).join('')}
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveFromSheet()"><i class="ti ti-device-floppy"></i> ${id?'อัพเดทรายการ':'บันทึกรายการ'}</button>
+    ${id?`<button class="btn-cancel-edit" style="display:block;margin-top:8px" onclick="closeSheet()">ยกเลิก</button>`:''}
+  `;
+  overlay.classList.add('open');
+  setTimeout(()=>document.getElementById('shInTitle').focus(),300);
+}
+
+function sheetToggleTag(tag, btn){
+  if(selectedTags.includes(tag)) selectedTags=selectedTags.filter(x=>x!==tag);
+  else selectedTags.push(tag);
+  btn.classList.toggle('on');
+}
+
+function closeSheet(){ document.getElementById('sheetOverlay').classList.remove('open'); }
+function closeSheetIfOutside(e){ if(e.target===document.getElementById('sheetOverlay')) closeSheet(); }
+
+function saveFromSheet(){
+  const date = document.getElementById('shInDate').value;
+  const title = document.getElementById('shInTitle').value.trim();
+  const cat = document.getElementById('shInCat').value;
+  const project = document.getElementById('shInProject').value.trim();
+  const hours = parseFloat(document.getElementById('shInHours').value)||null;
+  const note = document.getElementById('shInNote').value.trim();
+  if(!title){ toast('⚠️ กรุณากรอกชื่องาน'); return; }
+  if(!date){ toast('⚠️ กรุณาเลือกวันที่'); return; }
+  const entry = {id:editId||Date.now(), date, title, cat, project, hours, note, tags:[...selectedTags]};
+  if(editId!==null){
+    const idx=entries.findIndex(e=>e.id===editId);
+    if(idx>-1) entries[idx]=entry;
+    toast('✏️ แก้ไขเรียบร้อย');
+  } else {
+    entries.unshift(entry);
+    toast('✅ บันทึกแล้ว');
+  }
+  closeSheet();
+  saveLocal(); syncNow();
+  renderList(); updateStats();
+}
+
+/* ═══════════════════════════════════════
+   VIEW / FILTER / RENDER
+═══════════════════════════════════════ */
+function setView(v){
+  currentView=v;
+  ['all','today','week'].forEach(x=>document.getElementById('nb-'+x)?.classList.toggle('active',x===v));
+  renderList();
+}
+
+function getFiltered(){
+  const search = document.getElementById('searchBox').value.toLowerCase();
+  const cat = document.getElementById('filterCat').value;
+  const today = todayStr();
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-6);
+  const weekStr = weekAgo.toISOString().slice(0,10);
+  return entries.filter(e=>{
+    if(currentView==='today' && e.date!==today) return false;
+    if(currentView==='week' && e.date<weekStr) return false;
+    if(cat && e.cat!==cat) return false;
+    if(search && !e.title.toLowerCase().includes(search) && !(e.note||'').toLowerCase().includes(search) && !(e.project||'').toLowerCase().includes(search)) return false;
+    return true;
+  });
+}
+
+function badgeClass(tag){
+  if(tag.includes('เสร็จ')||tag.includes('ส่งมอบ')) return 'badge b-ok';
+  if(tag.includes('กำลัง')) return 'badge b-wip';
+  return 'badge b-tag';
+}
+
+function renderList(){
+  const list = getFiltered();
+  list.sort((a,b)=>b.date.localeCompare(a.date));
+  const container = document.getElementById('listBody');
+  if(!list.length){
+    container.innerHTML=`<div class="empty"><i class="ti ti-notes-off"></i><p>ไม่มีรายการงาน</p></div>`;
+    return;
+  }
+  const grouped={};
+  list.forEach(e=>{ if(!grouped[e.date]) grouped[e.date]=[]; grouped[e.date].push(e); });
+  const today=todayStr();
+  let html='';
+  Object.keys(grouped).sort((a,b)=>b.localeCompare(a)).forEach(date=>{
+    const isToday=date===today;
+    const totalH=grouped[date].reduce((s,e)=>s+(parseFloat(e.hours)||0),0);
+    html+=`<div class="day-group">
+      <div class="day-row">
+        <span class="day-pill ${isToday?'today':'past'}">${isToday?'วันนี้':date}</span>
+        <span class="day-name">${fmtDate(date)}</span>
+        ${totalH>0?`<span class="day-hrs">${totalH} ชม.</span>`:''}
+      </div>`;
+    grouped[date].forEach(e=>{
+      html+=`<div class="entry">
+        <div class="entry-top">
+          <div class="entry-title">${escHtml(e.title)}</div>
+          <div class="entry-btns">
+            <button class="ebtn" onclick="${isMobile()?`openSheet(${e.id})`:`editEntry(${e.id})`}"><i class="ti ti-pencil" style="font-size:13px"></i></button>
+            <button class="ebtn del" onclick="deleteEntry(${e.id})"><i class="ti ti-trash" style="font-size:13px"></i></button>
+          </div>
+        </div>
+        <div class="entry-meta">
+          ${e.cat?`<span class="badge b-cat">${escHtml(e.cat)}</span>`:''}
+          ${e.project?`<span class="badge b-proj"><i class="ti ti-folder" style="font-size:10px;vertical-align:-1px"></i> ${escHtml(e.project)}</span>`:''}
+          ${e.hours?`<span class="badge b-hrs">${e.hours}h</span>`:''}
+          ${(e.tags||[]).map(t=>`<span class="${badgeClass(t)}">${escHtml(t)}</span>`).join('')}
+        </div>
+        ${e.note?`<div class="entry-note">${escHtml(e.note)}</div>`:''}
+      </div>`;
+    });
+    html+='</div>';
+  });
+  container.innerHTML=html;
+}
+
+function saveEntry(){
+  const date=document.getElementById('inDate').value;
+  const title=document.getElementById('inTitle').value.trim();
+  const cat=document.getElementById('inCat').value;
+  const project=document.getElementById('inProject').value.trim();
+  const hours=parseFloat(document.getElementById('inHours').value)||null;
+  const note=document.getElementById('inNote').value.trim();
+  if(!title){ toast('⚠️ กรุณากรอกชื่องาน'); return; }
+  const entry={id:editId||Date.now(), date, title, cat, project, hours, note, tags:[...selectedTags]};
+  if(editId!==null){
+    const idx=entries.findIndex(e=>e.id===editId);
+    if(idx>-1) entries[idx]=entry;
+    toast('✏️ แก้ไขเรียบร้อย');
+  } else { entries.unshift(entry); toast('✅ บันทึกแล้ว'); }
+  cancelEdit(); saveLocal(); syncNow(); renderList(); updateStats();
+}
+
+function editEntry(id){
+  const e=entries.find(x=>x.id===id); if(!e) return;
+  editId=id;
+  document.getElementById('inDate').value=e.date;
+  document.getElementById('inTitle').value=e.title;
+  document.getElementById('inCat').value=e.cat||'';
+  document.getElementById('inProject').value=e.project||'';
+  document.getElementById('inHours').value=e.hours||'';
+  document.getElementById('inNote').value=e.note||'';
+  selectedTags=[...(e.tags||[])];
+  initTagWrap('tagWrap');
+  document.getElementById('formCardTitle').textContent='แก้ไขรายการ';
+  document.getElementById('btnSaveTxt').textContent='อัพเดทรายการ';
+  document.getElementById('btnCancelEdit').style.display='block';
+  document.getElementById('formCard').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelEdit(){
+  editId=null; selectedTags=[];
+  ['inTitle','inProject','inHours','inNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('inDate').value=todayStr();
+  document.getElementById('inCat').value='';
+  initTagWrap('tagWrap');
+  document.getElementById('formCardTitle').textContent='เพิ่มรายการงาน';
+  document.getElementById('btnSaveTxt').textContent='บันทึกรายการ';
+  document.getElementById('btnCancelEdit').style.display='none';
+}
+
+function deleteEntry(id){
+  if(!confirm('ต้องการลบรายการนี้?')) return;
+  entries=entries.filter(e=>e.id!==id);
+  saveLocal(); syncNow(); renderList(); updateStats();
+  toast('🗑️ ลบแล้ว');
+}
+
+function updateStats(){
+  const today=todayStr();
+  const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-6);
+  const weekStr=weekAgo.toISOString().slice(0,10);
+  const t=entries.length;
+  const td=entries.filter(e=>e.date===today).length;
+  const wk=entries.filter(e=>e.date>=weekStr).length;
+  const hrs=entries.reduce((s,e)=>s+(parseFloat(e.hours)||0),0);
+  const hrsStr=hrs%1===0?hrs:hrs.toFixed(1);
+  ['ss-total','ms-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});
+  ['ss-today','ms-today'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=td;});
+  ['ss-week','ms-week'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=wk;});
+  ['ss-hours','ms-hours'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=hrsStr;});
+  document.getElementById('nc-all').textContent=t;
+  document.getElementById('nc-today').textContent=td;
+  document.getElementById('nc-week').textContent=wk;
+}
+
+function renderStats(){
+  updateStats();
+  const cats={};
+  entries.forEach(e=>{ if(e.cat){ cats[e.cat]=(cats[e.cat]||0)+1; } });
+  const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const max=sorted[0]?sorted[0][1]:1;
+  const container=document.getElementById('catBreakdown');
+  if(!sorted.length){container.innerHTML='<div style="padding:16px;text-align:center;font-size:13px;color:var(--text3)">ยังไม่มีข้อมูล</div>';return;}
+  container.innerHTML=sorted.map(([cat,cnt])=>`
+    <div class="cat-row">
+      <div class="cat-name">${escHtml(cat)}</div>
+      <div class="cat-bar-wrap"><div class="cat-bar" style="width:${Math.round(cnt/max*100)}%"></div></div>
+      <div class="cat-cnt">${cnt}</div>
+    </div>`).join('');
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(entries,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='work-diary-'+todayStr()+'.json'; a.click();
+  URL.revokeObjectURL(url); toast('📥 ดาวน์โหลดแล้ว');
+}
+function importData(ev){
+  const file=ev.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(Array.isArray(data)){ entries=data; saveLocal(); syncNow(); renderList(); updateStats(); toast('📤 Import สำเร็จ '+data.length+' รายการ'); }
+    }catch{ toast('❌ ไฟล์ไม่ถูกต้อง'); }
+  };
+  r.readAsText(file); ev.target.value='';
+}
+
+/* ═══════════════════════════════════════
+   AUTO RESTORE
+═══════════════════════════════════════ */
+(function restoreSession(){
+  const u=sessionStorage.getItem('wd_user');
+  if(u){ currentUser={name:u}; entries=loadLocal(); showApp(); }
+  document.getElementById('inPin').addEventListener('keydown',e=>{if(e.key==='Enter') doLogin();});
+  document.getElementById('inPinConfirm').addEventListener('keydown',e=>{if(e.key==='Enter') doLogin();});
+})();
+</script>
 </body>
 </html>
