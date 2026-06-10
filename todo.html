@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#6366f1">
+    <title>TaskFlow - To-Do List App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #e0e7ff;
+            --success: #10b981;
+            --success-light: #d1fae5;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --bg: #f9fafb;
+            --surface: #ffffff;
+            --surface-alt: #f3f4f6;
+            --border: #e5e7eb;
+            --text: #111827;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-xs: 6px;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ═══════════════════════════════
+           LAYOUT
+           ═══════════════════════════════ */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ═══════════════════════════════
+           HEADER
+           ═══════════════════════════════ */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-top: 20px;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .header-logo i {
+            font-size: 28px;
+            color: var(--primary);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* ═══════════════════════════════
+           INPUT SECTION
+           ═══════════════════════════════ */
+        .input-section {
+            margin-bottom: 28px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            background: var(--surface);
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+            background: var(--surface);
+        }
+
+        .input-wrapper input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .btn-add {
+            padding: 12px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-add:hover {
+            background: var(--primary-dark);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-add:active {
+            transform: scale(0.95);
+        }
+
+        .btn-add i {
+            font-size: 18px;
+        }
+
+        /* ═══════════════════════════════
+           CONTROLS
+           ═══════════════════════════════ */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 14px;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            color: var(--text-secondary);
+            border-radius: var(--radius-xs);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            border-radius: var(--radius-xs);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        /* ═══════════════════════════════
+           STATS
+           ═══════════════════════════════ */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* ═══════════════════════════════
+           TODO LIST
+           ═══════════════════════════════ */
+        .todo-list {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .todo-empty {
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-tertiary);
+        }
+
+        .todo-empty i {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+
+        .todo-empty p {
+            font-size: 14px;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .todo-item:last-child {
+            border-bottom: none;
+        }
+
+        .todo-item:hover {
+            background: var(--surface-alt);
+        }
+
+        .todo-item.completed {
+            opacity: 0.6;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            margin-top: 2px;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .todo-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .todo-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            word-break: break-word;
+            margin-bottom: 4px;
+        }
+
+        .todo-item.completed .todo-title {
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+        }
+
+        .todo-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .priority-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: var(--radius-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .priority-high {
+            background: var(--danger-light);
+            color: #991b1b;
+        }
+
+        .priority-medium {
+            background: var(--warning-light);
+            color: #92400e;
+        }
+
+        .priority-low {
+            background: var(--success-light);
+            color: #065f46;
+        }
+
+        .due-date {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .due-date i {
+            font-size: 12px;
+        }
+
+        .due-date.overdue {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .category-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: var(--radius-xs);
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .todo-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-todo-action {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border);
+            background: transparent;
+            border-radius: var(--radius-xs);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-todo-action:hover {
+            background: var(--surface-alt);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-todo-action.delete:hover {
+            background: var(--danger-light);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* ═══════════════════════════════
+           MODAL
+           ═══════════════════════════════ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 28px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.2s;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-xs);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            background: var(--surface);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .btn-primary {
+            flex: 1;
+            padding: 11px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-xs);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            flex: 1;
+            padding: 11px 16px;
+            background: var(--surface-alt);
+            color: var(--text);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-xs);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        /* ═══════════════════════════════
+           TOAST
+           ═══════════════════════════════ */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--text);
+            color: white;
+            padding: 12px 16px;
+            border-radius: var(--radius-xs);
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s;
+            z-index: 2000;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        .toast.error {
+            background: var(--danger);
+        }
+
+        /* ═══════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════ */
+        @media (max-width: 600px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .input-wrapper {
+                flex-direction: column;
+            }
+
+            .btn-add {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .filter-buttons,
+            .action-buttons {
+                width: 100%;
+            }
+
+            .filter-buttons {
+                justify-content: flex-start;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .action-buttons {
+                justify-content: center;
+            }
+
+            .modal {
+                width: 95%;
+            }
+
+            .toast {
+                left: 20px;
+                right: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-logo">
+            <i class="ti ti-checklist"></i>
+        </div>
+        <h1>TaskFlow</h1>
+        <p>Stay organized and never miss a task</p>
+    </div>
+
+    <!-- INPUT SECTION -->
+    <div class="input-section">
+        <div class="input-wrapper">
+            <input 
+                type="text" 
+                id="todoInput" 
+                placeholder="Add a new task..." 
+                autocomplete="off"
+            >
+            <button class="btn-add" onclick="addTodo()">
+                <i class="ti ti-plus"></i>
+                <span>Add</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats" id="statsContainer">
+        <div class="stat-card">
+            <div class="stat-number" id="statTotal">0</div>
+            <div class="stat-label">Total Tasks</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="statActive">0</div>
+            <div class="stat-label">Active</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="statCompleted">0</div>
+            <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="statProgress">0%</div>
+            <div class="stat-label">Progress</div>
+        </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls">
+        <div class="filter-buttons">
+            <button class="filter-btn active" onclick="setFilter('all')">
+                <i class="ti ti-list"></i> All
+            </button>
+            <button class="filter-btn" onclick="setFilter('active')">
+                <i class="ti ti-circle"></i> Active
+            </button>
+            <button class="filter-btn" onclick="setFilter('completed')">
+                <i class="ti ti-check"></i> Completed
+            </button>
+            <button class="filter-btn" onclick="setFilter('high')">
+                <i class="ti ti-flame"></i> High Priority
+            </button>
+        </div>
+        <div class="action-buttons">
+            <button class="btn-icon" onclick="openSettings()" title="Settings">
+                <i class="ti ti-settings"></i>
+            </button>
+            <button class="btn-icon" onclick="clearCompleted()" title="Clear Completed">
+                <i class="ti ti-trash"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- TODO LIST -->
+    <div class="todo-list" id="todoList">
+        <div class="todo-empty">
+            <i class="ti ti-inbox"></i>
+            <p>No tasks yet. Add one to get started!</p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════
+     MODALS
+     ═══════════════════════════════ -->
+
+<!-- ADD/EDIT TODO MODAL -->
+<div class="modal-overlay" id="todoModalOverlay">
+    <div class="modal">
+        <div class="modal-header" id="todoModalTitle">Add New Task</div>
+        <div class="form-group">
+            <label>Task Description *</label>
+            <input type="text" id="modalTaskInput" placeholder="Enter task description">
+        </div>
+        <div class="form-group">
+            <label>Category</label>
+            <select id="modalCategorySelect">
+                <option value="">No Category</option>
+                <option value="work">Work</option>
+                <option value="personal">Personal</option>
+                <option value="shopping">Shopping</option>
+                <option value="health">Health</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Priority</label>
+            <select id="modalPrioritySelect">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Due Date</label>
+            <input type="date" id="modalDueDateInput">
+        </div>
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea id="modalNotesInput" placeholder="Add notes..."></textarea>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-primary" onclick="saveTodoFromModal()">Save Task</button>
+            <button class="btn-secondary" onclick="closeModal('todoModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModalOverlay">
+    <div class="modal">
+        <div class="modal-header">Settings</div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="sortByPriority">
+                Sort tasks by priority
+            </label>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="sortByDueDate">
+                Sort tasks by due date
+            </label>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="hideCompleted">
+                Hide completed tasks
+            </label>
+        </div>
+        <div class="form-group">
+            <label>Theme</label>
+            <select id="themeSelect" onchange="changeTheme(this.value)">
+                <option value="light">Light</option>
+                <option value="auto">Auto (System)</option>
+            </select>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-primary" onclick="exportData()">
+                <i class="ti ti-download"></i> Export Data
+            </button>
+            <button class="btn-secondary" onclick="clearAllData()">
+                <i class="ti ti-trash"></i> Clear All
+            </button>
+        </div>
+        <div class="modal-buttons" style="margin-top: 12px;">
+            <button class="btn-secondary" onclick="closeModal('settingsModal')" style="flex: 1;">Close</button>
+        </div>
+    </div>
+</div>
+
+<script src="todo.js"></script>
+</body>
+</html>
